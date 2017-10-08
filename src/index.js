@@ -2,6 +2,7 @@ const electron = require('electron'); // eslint-disable-line
 const isDev = require('electron-is-dev');
 const path = require('path');
 const url = require('url');
+const windowStateKeeper = require('electron-window-state');
 
 const menu = require('./menu');
 
@@ -17,9 +18,26 @@ if (!isDev) process.env.NODE_ENV = 'production';
 let mainWindow;
 
 function createWindow() {
+  // Remember size and position
+  const mainWindowState = windowStateKeeper({
+    defaultWidth: 800,
+    defaultHeight: 600,
+  });
+
   mainWindow = new BrowserWindow({
+    x: mainWindowState.x,
+    y: mainWindowState.y,
+    width: mainWindowState.width,
+    height: mainWindowState.height,
     darkTheme: true,
   });
+
+
+  // Let us register listeners on the window, so we can update the state
+  // automatically (the listeners will be removed when the window is closed)
+  // and restore the maximized or full screen state
+  mainWindowState.manage(mainWindow);
+
   mainWindow.loadURL(url.format({
     pathname: path.join(__dirname, 'index.html'),
     protocol: 'file:',
