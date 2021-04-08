@@ -86,6 +86,8 @@ export default () => {
   useEffect(() => safeSetConfig('enableTransferTimestamps', enableTransferTimestamps), [enableTransferTimestamps]);
   const [outFormatLocked, setOutFormatLocked] = useState(configStore.get('outFormatLocked'));
   useEffect(() => safeSetConfig('outFormatLocked', outFormatLocked), [outFormatLocked]);
+  const [keyBindings, setKeyBindings] = useState(configStore.get('keyBindings'));
+  useEffect(() => safeSetConfig('keyBindings', keyBindings), [keyBindings]);
 
 
   // NOTE! This useEffect must be placed after all usages of firstUpdateRef.current (safeSetConfig)
@@ -159,5 +161,7 @@ export default () => {
     setEnableTransferTimestamps,
     outFormatLocked,
     setOutFormatLocked,
+    keyBindings,
+    setKeyBindings,
   };
 };

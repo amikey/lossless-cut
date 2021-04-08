@@ -10,7 +10,6 @@ import { useDebounce } from 'use-debounce';
 import filePathToUrl from 'file-url';
 import i18n from 'i18next';
 import { useTranslation } from 'react-i18next';
-import Mousetrap from 'mousetrap';
 
 import fromPairs from 'lodash/fromPairs';
 import clamp from 'lodash/clamp';
@@ -23,6 +22,7 @@ import useUserPreferences from './hooks/useUserPreferences';
 import useFfmpegOperations from './hooks/useFfmpegOperations';
 import useKeyframes from './hooks/useKeyframes';
 import useWaveform from './hooks/useWaveform';
+import useKeyboard from './hooks/useKeyboard';
 import NoFileLoaded from './NoFileLoaded';
 import Canvas from './Canvas';
 import TopMenu from './TopMenu';
@@ -148,7 +148,7 @@ const App = memo(() => {
   const isCustomFormatSelected = fileFormat !== detectedFileFormat;
 
   const {
-    captureFormat, setCaptureFormat, customOutDir, setCustomOutDir, keyframeCut, setKeyframeCut, preserveMovData, setPreserveMovData, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, autoMerge, setAutoMerge, timecodeShowFrames, setTimecodeShowFrames, invertCutSegments, setInvertCutSegments, autoExportExtraStreams, setAutoExportExtraStreams, askBeforeClose, setAskBeforeClose, enableAskForImportChapters, setEnableAskForImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, muted, setMuted, autoSaveProjectFile, setAutoSaveProjectFile, wheelSensitivity, setWheelSensitivity, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, ffmpegExperimental, setFfmpegExperimental, hideNotifications, setHideNotifications, autoLoadTimecode, setAutoLoadTimecode, autoDeleteMergedSegments, setAutoDeleteMergedSegments, exportConfirmEnabled, setExportConfirmEnabled, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, simpleMode, setSimpleMode, outSegTemplate, setOutSegTemplate, keyboardSeekAccFactor, setKeyboardSeekAccFactor, keyboardNormalSeekSpeed, setKeyboardNormalSeekSpeed, enableTransferTimestamps, setEnableTransferTimestamps, outFormatLocked, setOutFormatLocked,
+    captureFormat, setCaptureFormat, customOutDir, setCustomOutDir, keyframeCut, setKeyframeCut, preserveMovData, setPreserveMovData, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, autoMerge, setAutoMerge, timecodeShowFrames, setTimecodeShowFrames, invertCutSegments, setInvertCutSegments, autoExportExtraStreams, setAutoExportExtraStreams, askBeforeClose, setAskBeforeClose, enableAskForImportChapters, setEnableAskForImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, muted, setMuted, autoSaveProjectFile, setAutoSaveProjectFile, wheelSensitivity, setWheelSensitivity, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, ffmpegExperimental, setFfmpegExperimental, hideNotifications, setHideNotifications, autoLoadTimecode, setAutoLoadTimecode, autoDeleteMergedSegments, setAutoDeleteMergedSegments, exportConfirmEnabled, setExportConfirmEnabled, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, simpleMode, setSimpleMode, outSegTemplate, setOutSegTemplate, keyboardSeekAccFactor, setKeyboardSeekAccFactor, keyboardNormalSeekSpeed, setKeyboardNormalSeekSpeed, enableTransferTimestamps, setEnableTransferTimestamps, outFormatLocked, setOutFormatLocked, keyBindings, setKeyBindings,
   } = useUserPreferences();
 
   const {
@@ -1311,25 +1311,30 @@ const App = memo(() => {
 
   const seekAccelerationRef = useRef(1);
 
-  // TODO split up?
-  useEffect(() => {
-    if (exportConfirmVisible) return () => {};
-
-    const togglePlayNoReset = () => togglePlay();
-    const togglePlayReset = () => togglePlay(true);
+  const onKeyPress = useCallback(({ action, keyup }) => {
+    const togglePlayNoResetSpeed = () => togglePlay();
+    const togglePlayResetSpeed = () => togglePlay(true);
     const reducePlaybackRate = () => changePlaybackRate(-1);
     const increasePlaybackRate = () => changePlaybackRate(1);
+    const seekReset = () => {
+      seekAccelerationRef.current = 1;
+    };
     function seekBackwards() {
+      if (keyup) {
+        seekReset();
+        return;
+      }
       seekRel(keyboardNormalSeekSpeed * seekAccelerationRef.current * -1);
       seekAccelerationRef.current *= keyboardSeekAccFactor;
     }
     function seekForwards() {
+      if (keyup) {
+        seekReset();
+        return;
+      }
       seekRel(keyboardNormalSeekSpeed * seekAccelerationRef.current);
       seekAccelerationRef.current *= keyboardSeekAccFactor;
     }
-    const seekReset = () => {
-      seekAccelerationRef.current = 1;
-    };
     const seekBackwardsPercent = () => { seekRelPercent(-0.01); return false; };
     const seekForwardsPercent = () => { seekRelPercent(0.01); return false; };
     const seekBackwardsKeyframe = () => seekClosestKeyframe(-1);
@@ -1341,91 +1346,52 @@ const App = memo(() => {
     const zoomIn = () => { zoomRel(1); return false; };
     const zoomOut = () => { zoomRel(-1); return false; };
 
-    // mousetrap seems to be the only lib properly handling layouts that require shift to be pressed to get a particular key #520
-    // Also document.addEventListener needs custom handling of modifier keys or C will be triggered by CTRL+C, etc
-    const mousetrap = new Mousetrap();
-    // mousetrap.bind(':', () => console.log('test'));
-    mousetrap.bind('plus', () => addCutSegment());
-    mousetrap.bind('space', () => togglePlayReset());
-    mousetrap.bind('k', () => togglePlayNoReset());
-    mousetrap.bind('j', () => reducePlaybackRate());
-    mousetrap.bind('l', () => increasePlaybackRate());
-    mousetrap.bind('z', () => toggleComfortZoom());
-    mousetrap.bind(',', () => seekBackwardsShort());
-    mousetrap.bind('.', () => seekForwardsShort());
-    mousetrap.bind('c', () => capture());
-    mousetrap.bind('i', () => setCutStart());
-    mousetrap.bind('o', () => setCutEnd());
-    mousetrap.bind('backspace', () => removeCutSegment(currentSegIndexSafe));
-    mousetrap.bind('d', () => cleanupFiles());
-    mousetrap.bind('b', () => splitCurrentSegment());
-    mousetrap.bind('r', () => increaseRotation());
+    const removeCurrentSegment = () => removeCutSegment(currentSegIndexSafe);
 
-    mousetrap.bind('left', () => seekBackwards());
-    mousetrap.bind('left', () => seekReset(), 'keyup');
-    mousetrap.bind(['ctrl+left', 'command+left'], () => seekBackwardsPercent());
-    mousetrap.bind('alt+left', () => seekBackwardsKeyframe());
-    mousetrap.bind('shift+left', () => jumpCutStart());
+    const undo = () => cutSegmentsHistory.back();
+    const redo = () => cutSegmentsHistory.forward();
+    const labelCurrentSegment = () => onLabelSegmentPress(currentSegIndexSafe);
 
-    mousetrap.bind('right', () => seekForwards());
-    mousetrap.bind('right', () => seekReset(), 'keyup');
-    mousetrap.bind(['ctrl+right', 'command+right'], () => seekForwardsPercent());
-    mousetrap.bind('alt+right', () => seekForwardsKeyframe());
-    mousetrap.bind('shift+right', () => jumpCutEnd());
+    const addSegment = () => addCutSegment();
 
-    mousetrap.bind('up', () => jumpPrevSegment());
-    mousetrap.bind(['ctrl+up', 'command+up'], () => zoomIn());
-
-    mousetrap.bind('down', () => jumpNextSegment());
-    mousetrap.bind(['ctrl+down', 'command+down'], () => zoomOut());
-
-    // https://github.com/mifi/lossless-cut/issues/610
-    Mousetrap.bind(['ctrl+z', 'command+z'], (e) => {
-      e.preventDefault();
-      cutSegmentsHistory.back();
-    });
-    Mousetrap.bind(['ctrl+shift+z', 'command+shift+z'], (e) => {
-      e.preventDefault();
-      cutSegmentsHistory.forward();
-    });
-
-    mousetrap.bind(['enter'], () => {
-      onLabelSegmentPress(currentSegIndexSafe);
-      return false;
-    });
-
-    return () => mousetrap.reset();
-  }, [
-    addCutSegment, capture, changePlaybackRate, togglePlay, removeCutSegment,
-    setCutEnd, setCutStart, seekRel, seekRelPercent, shortStep, cleanupFiles, jumpSeg,
-    seekClosestKeyframe, zoomRel, toggleComfortZoom, splitCurrentSegment, exportConfirmVisible,
-    increaseRotation, jumpCutStart, jumpCutEnd, cutSegmentsHistory, keyboardSeekAccFactor,
-    keyboardNormalSeekSpeed, onLabelSegmentPress, currentSegIndexSafe,
-  ]);
-
-  useEffect(() => {
-    function onKeyPress() {
-      if (exportConfirmVisible) onExportConfirm();
-      else onExportPress();
+    function tryActions(actions) {
+      const fn = actions[action];
+      if (!fn) return false;
+      fn();
+      return true;
     }
 
-    const mousetrap = new Mousetrap();
-    mousetrap.bind('e', onKeyPress);
-    return () => mousetrap.reset();
-  }, [exportConfirmVisible, onExportConfirm, onExportPress]);
+    if (isDev) console.log('key event', action);
 
-  useEffect(() => {
-    function onEscPress() {
+    // NOTE: Do not change these names because users have bound keys by these names
+    const mainActions = {
+      addSegment, togglePlayResetSpeed, togglePlayNoResetSpeed, reducePlaybackRate, increasePlaybackRate, toggleComfortZoom, seekBackwardsShort, seekForwardsShort, capture, setCutStart, setCutEnd, removeCurrentSegment, cleanupFiles, splitCurrentSegment, increaseRotation, seekBackwards, seekBackwardsPercent, seekBackwardsKeyframe, jumpCutStart, seekForwards, seekForwardsPercent, seekForwardsKeyframe, jumpCutEnd, jumpPrevSegment, zoomIn, jumpNextSegment, zoomOut, undo, redo, labelCurrentSegment,
+    };
+
+    if (!exportConfirmVisible && tryActions(mainActions)) return false;
+
+    if (action === 'export') {
+      if (exportConfirmVisible) onExportConfirm();
+      onExportPress();
+      return false;
+    }
+
+    if (action === 'toggleHelp') {
+      toggleHelp();
+      return false;
+    }
+
+    if (action === 'closeActiveScreen') {
       closeExportConfirm();
       setHelpVisible(false);
       setSettingsVisible(false);
+      return false;
     }
 
-    const mousetrap = new Mousetrap();
-    mousetrap.bind('h', toggleHelp);
-    mousetrap.bind('escape', onEscPress);
-    return () => mousetrap.reset();
-  }, [closeExportConfirm, toggleHelp]);
+    return true;
+  }, [addCutSegment, capture, changePlaybackRate, cleanupFiles, currentSegIndexSafe, cutSegmentsHistory, increaseRotation, jumpCutEnd, jumpCutStart, jumpSeg, keyboardNormalSeekSpeed, keyboardSeekAccFactor, onLabelSegmentPress, removeCutSegment, seekClosestKeyframe, seekRel, seekRelPercent, setCutEnd, setCutStart, shortStep, splitCurrentSegment, toggleComfortZoom, togglePlay, zoomRel, exportConfirmVisible, onExportConfirm, onExportPress, toggleHelp, closeExportConfirm]);
+
+  useKeyboard({ keyBindings, onKeyPress });
 
   useEffect(() => {
     document.ondragover = dragPreventer;

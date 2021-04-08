@@ -7,6 +7,50 @@ const { pathExists } = require('fs-extra');
 const { app } = electron;
 
 
+const defaultKeyBindings = [
+  { keys: 'plus', action: 'addSegment' },
+  { keys: 'space', action: 'togglePlayResetSpeed' },
+  { keys: 'k', action: 'togglePlayNoResetSpeed' },
+  { keys: 'j', action: 'reducePlaybackRate' },
+  { keys: 'l', action: 'increasePlaybackRate' },
+  { keys: 'z', action: 'toggleComfortZoom' },
+  { keys: ',', action: 'seekBackwardsShort' },
+  { keys: '.', action: 'seekForwardsShort' },
+  { keys: 'c', action: 'capture' },
+  { keys: 'i', action: 'setCutStart' },
+  { keys: 'o', action: 'setCutEnd' },
+  { keys: 'backspace', action: 'removeCurrentSegment' },
+  { keys: 'd', action: 'cleanupFiles' },
+  { keys: 'b', action: 'splitCurrentSegment' },
+  { keys: 'r', action: 'increaseRotation' },
+
+  { keys: 'left', action: 'seekBackwards' },
+  { keys: ['ctrl+left', 'command+left'], action: 'seekBackwardsPercent' },
+  { keys: 'alt+left', action: 'seekBackwardsKeyframe' },
+  { keys: 'shift+left', action: 'jumpCutStart' },
+
+  { keys: 'right', action: 'seekForwards' },
+  { keys: ['ctrl+right', 'command+right'], action: 'seekForwardsPercent' },
+  { keys: 'alt+right', action: 'seekForwardsKeyframe' },
+  { keys: 'shift+right', action: 'jumpCutEnd' },
+
+  { keys: 'up', action: 'jumpPrevSegment' },
+  { keys: ['ctrl+up', 'command+up'], action: 'zoomIn' },
+
+  { keys: 'down', action: 'jumpNextSegment' },
+  { keys: ['ctrl+down', 'command+down'], action: 'zoomOut' },
+
+  // https://github.com/mifi/lossless-cut/issues/610
+  { keys: ['ctrl+z', 'command+z'], action: 'undo' },
+  { keys: ['ctrl+shift+z', 'command+shift+z'], action: 'redo' },
+
+  { keys: ['enter'], action: 'labelCurrentSegment' },
+
+  { keys: 'e', action: 'export' },
+  { keys: 'h', action: 'toggleHelp' },
+  { keys: 'escape', action: 'closeActiveScreen' },
+];
+
 const defaults = {
   captureFormat: 'jpeg',
   customOutDir: undefined,
@@ -38,6 +82,7 @@ const defaults = {
   keyboardNormalSeekSpeed: 1,
   enableTransferTimestamps: true,
   outFormatLocked: undefined,
+  keyBindings: defaultKeyBindings,
 };
 
 // For portable app: https://github.com/mifi/lossless-cut/issues/645
